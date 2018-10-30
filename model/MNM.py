@@ -8,6 +8,8 @@ from torch.autograd import Variable
 import torch.nn.functional as F
 import torch.nn as nn
 
+torch.manual_seed(2333)
+myRandom = np.random.RandomState(2333)
 
 class KBMemory():
     def __init__(self, wordEmbed, entityEmbed, wordVectorLength, hopNumber, classNumber, cuda=True):
@@ -22,14 +24,14 @@ class KBMemory():
         self.atten_Ws = []
         self.atten_bs = []
         for i in range(self.hopNumber):
-            self.atten_Ws.append(VariableDevice(torch.FloatTensor(np.random.uniform(-0.01, 0.01, (1, 2 * self.vectorLength))), cuda, requires_grad=True))
-            self.atten_bs.append(VariableDevice(torch.FloatTensor(np.random.uniform(-0.01, 0.01, 1)), cuda, requires_grad=True))
+            self.atten_Ws.append(VariableDevice(torch.FloatTensor(myRandom.uniform(-0.01, 0.01, (1, 2 * self.vectorLength))), cuda, requires_grad=True))
+            self.atten_bs.append(VariableDevice(torch.FloatTensor(myRandom.uniform(-0.01, 0.01, 1)), cuda, requires_grad=True))
 
-        self.linear_W = VariableDevice(torch.FloatTensor(np.random.uniform(-0.01, 0.01, (self.vectorLength, self.vectorLength))), cuda, requires_grad=True)
-        self.linear_b = VariableDevice(torch.FloatTensor(np.random.uniform(-0.01, 0.01, (self.vectorLength, 1))), cuda, requires_grad=True)
+        self.linear_W = VariableDevice(torch.FloatTensor(myRandom.uniform(-0.01, 0.01, (self.vectorLength, self.vectorLength))), cuda, requires_grad=True)
+        self.linear_b = VariableDevice(torch.FloatTensor(myRandom.uniform(-0.01, 0.01, (self.vectorLength, 1))), cuda, requires_grad=True)
 
-        self.softmax_W = VariableDevice(torch.FloatTensor(np.random.uniform(-0.01, 0.01, (classNumber, self.vectorLength*2 + wordVectorLength))), cuda, requires_grad=True)
-        self.softmax_b = VariableDevice(torch.FloatTensor(np.random.uniform(-0.01, 0.01, (classNumber, 1))), cuda, requires_grad=True)
+        self.softmax_W = VariableDevice(torch.FloatTensor(myRandom.uniform(-0.01, 0.01, (classNumber, self.vectorLength*2 + wordVectorLength))), cuda, requires_grad=True)
+        self.softmax_b = VariableDevice(torch.FloatTensor(myRandom.uniform(-0.01, 0.01, (classNumber, 1))), cuda, requires_grad=True)
         
         self.softmax = torch.nn.Softmax()
         

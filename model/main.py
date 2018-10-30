@@ -8,18 +8,63 @@ from LoadDataVariables import *
 from merge import mergeResult
 from MNM import *
 
+def prf(predicPath, goldPath):
+    p = 0.0
+    r = 0.0
+    f = 0.0
+    sampleCount = 0
+    goldCount = 0
+    ppCount = 0
+
+    goldDict = {}
+    with open(goldPath, 'r') as goldStream:
+        for line in goldStream:
+            items= line.strip().split("\t")
+            if items[0] not in goldDict:
+                goldDict[items[0]] = []
+            goldDict[items[0]].append(items[1] + "\t" + items[2])
+            goldCount += 1
+
+    with open(predicPath, 'r') as predicStream:
+        for line in predicStream:
+            items = line.strip().split("\t")
+            if items[0] not in goldDict:
+                #print(items[0])
+                #sampleCount += 1
+                continue
+            gold = goldDict[items[0]]
+            pairStr0 = items[1] + "\t" + items[2]
+            pairStr1 = items[2] + "\t" + items[1]
+            
+            if pairStr0 in gold:
+                ppCount += 1
+            elif pairStr1 in gold:
+                ppCount += 1
+
+            sampleCount += 1
+    try:
+        # print(sampleCount)
+        p = float(ppCount) / float(sampleCount)
+        r = float(ppCount) / float(goldCount)
+        f = 2 * p * r / (p + r)
+    except:
+        return 0.0, 0.0, 0.0
+    return p*100, r*100, f*100
 
 def train(mnm, trainset, numEpoches, batchSize, paraPathPref='./parameters/model'):
     maxp = 0
     maxr = 0
     maxf = 0
     trainsetSize = len(trainset)
-
+    oldf = 0.0
     optimizer = optim.Adam(mnm.parameters, weight_decay=0.1)
     test_idx = 0
+    
+    myRandom.shuffle(trainset)
+    validSet = trainset[:200]
+    trainset = trainset[200:]
     for epoch_idx in range(numEpoches):
-            
-        np.random.shuffle(trainset)
+        myRandom.shuffle(trainset)
         sum_loss= VariableDevice(torch.Tensor([0]), cuda)
         print("=====================================================================")
         print("epoch " + str(epoch_idx) + ", trainSize: " + str(trainsetSize))
@@ -66,29 +111,31 @@ def train(mnm, trainset, numEpoches, batchSize, paraPathPref='./parameters/model
 
         time1 = time.time()
         print("Iteration", epoch_idx, "Loss", sum_loss.cpu().data.numpy()[0], "train Acc: ", float(correct / count) , "time: ", str(time1 - time0))
-            
-        currentResult = resultOutput + "result_" + str(test_idx) + ".txt"
-        mergedResult = currentResult + ".merged"
-        resultStream = open(currentResult, 'w')
-        probPath   = resultOutput + "prob_" + str(test_idx) + ".txt"
-        test(mnm, testset, resultStream, probPath)
-        resultStream.close()
-        mergeResult(currentResult, mergedResult)
-        # p, r, f = micro_prf(mergedResult)
-        # if p == 0 and r == 0 and f == 0:
-        #     continue
-        # test_idx += 1
+        
+        currentValidResult = resultOutput + "result_valid_" + str(epoch_idx) + ".txt"
+        mergedValidResult = currentValidResult + ".merged"
+        resultValidStream = open(currentValidResult, 'w')
 
-        # if p >= maxp:
-        #     maxp = p
-        #     torch.save(parameters, paraPathPref + "_p")
-        # if r >= maxr:
-        #     maxr = r
-        #     torch.save(parameters, paraPathPref + "_r")
-        # if f >= maxf:
-        #     maxf = f
-        #     torch.save(parameters, paraPathPref + "_f")
+        test(mnm, validSet, resultValidStream)
+        resultValidStream.close()
+        mergeResult(currentValidResult, mergedValidResult)
+        p, r, f = prf(mergedValidResult, "../data/trainGold.txt")
+        print("valid P: {} R: {} F: {}".format(p, r, f))
 
+        if f > oldf:
+            oldf = f
+            currentResult = resultOutput + "result_" + str(test_idx) + ".txt"
+            mergedResult = currentResult + ".merged"
+            resultStream = open(currentResult, 'w')
+            probPath   = resultOutput + "prob_" + str(test_idx) + ".txt"
+            test(mnm, testset, resultStream, probPath)
+            resultStream.close()
+            mergeResult(currentResult, mergedResult)
+            p, r, f = prf(mergedResult, "../data/testGold.txt")
+            print("test P: {} R: {} F: {}".format(p, r, f))
+            test_idx += 1
+        else:
+            break
 def test(mnm, testSet, resultStream=None, probPath=None):
     count = 0
     correct = 0
@@ -119,7 +166,7 @@ def test(mnm, testSet, resultStream=None, probPath=None):
         np.savetxt(probPath, probs, '%.5f',delimiter=' ')
     time1 = time.time()
     acc = correct/count
-    print("test Acc: ", acc)
+    # print("test Acc: ", acc)
     print("time    : ", str(time1 - time0))
 
 def GetSampleProperty(sample):
@@ -185,7 +232,7 @@ parser.add_argument("--testPath", default="../data/test.txt")
 parser.add_argument("--batchSize", default=100, type=int)
 parser.add_argument("--wd", default=100, type=int)
 parser.add_argument("--ed", default=100, type=int)
-parser.add_argument("--hop", default=2, type=int)
+parser.add_argument("--hop", default=4, type=int)
 parser.add_argument("--clas", default=2, type=int)
 parser.add_argument("--epoch", default=20, type=int)
 parser.add_argument("--wePath", default="../data/wordEmb/bio-word2id100")
@@ -240,12 +287,12 @@ print("Load test samples...")
 testSet = LoadSamples(testsPath)
 
 trainset = []
-for sample in trainSet[0:201]:
+for sample in trainSet:
     sampleTuple = GetSampleProperty(sample)
     trainset.append(sampleTuple)
 
 testset = []
-for sample in testSet[0:201]:
+for sample in testSet:
     sampleTuple = GetSampleProperty(sample)
     testset.append(sampleTuple)
 
