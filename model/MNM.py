@@ -8,8 +8,9 @@ from torch.autograd import Variable
 import torch.nn.functional as F
 import torch.nn as nn
 
-torch.manual_seed(2333)
-myRandom = np.random.RandomState(2333)
+# for reproduction
+torch.manual_seed(2018)
+myRandom = np.random.RandomState(2018)
 
 class KBMemory():
     def __init__(self, wordEmbed, entityEmbed, wordVectorLength, hopNumber, classNumber, cuda=True):
