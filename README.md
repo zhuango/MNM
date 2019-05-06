@@ -1,4 +1,4 @@
-# KAN
+# MNM
 
 ![Supported Python versions](https://img.shields.io/badge/python-3.6-blue.svg)
 ![Supported Pytorch versions](https://img.shields.io/badge/pytorch-0.2-blue.svg)
